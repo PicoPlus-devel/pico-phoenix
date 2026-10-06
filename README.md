@@ -17,6 +17,31 @@ pico-phoenix runs standalone, or as an application of [pico-bootLoader](https://
 
 ***
 
+## Screenshots
+
+The attract mode as the emulator draws it, at twice the original size, with *Tate mode* off. For the two tate orientations, see [Display and tate mode](#display-and-tate-mode).
+
+<table>
+  <tr>
+    <td><img width="320" alt="Title screen: the first wave of birds and the copyright notice" src="docs/screenshots/title.png" /></td>
+    <td><img width="320" alt="The small birds attacking the player's ship" src="docs/screenshots/birds.png" /></td>
+  </tr>
+  <tr>
+    <td align="center">Title screen</td>
+    <td align="center">Waves 1 and 2: the birds</td>
+  </tr>
+  <tr>
+    <td><img width="320" alt="A phoenix and a column of eggs" src="docs/screenshots/phoenix.png" /></td>
+    <td><img width="320" alt="The alien mothership with its escort of birds" src="docs/screenshots/mothership.png" /></td>
+  </tr>
+  <tr>
+    <td align="center">Waves 3 and 4: the phoenixes</td>
+    <td align="center">Wave 5: the mothership</td>
+  </tr>
+</table>
+
+***
+
 ## Game data
 
 Required is the MAME **`phoenix`** set: Phoenix (Amstar, set 1). It consists of 14 files, about 25 KB in total.
@@ -91,6 +116,19 @@ Phoenix was made for a monitor mounted on its side: the original picture is 208 
 | Bottom right | The same picture, rotated by 180 degrees. | A monitor turned 90 degrees counter-clockwise, so that its bottom edge is on the right |
 
 The setting takes effect immediately and is saved with the other settings. The settings menu itself is not rotated.
+
+<table>
+  <tr>
+    <td><img width="320" alt="Tate mode Bottom left: the mothership wave shown unrotated, the score along the left edge" src="docs/screenshots/tate-bottom-left.png" /></td>
+    <td><img width="320" alt="Tate mode Bottom right: the same picture rotated by 180 degrees, the score along the right edge" src="docs/screenshots/tate-bottom-right.png" /></td>
+  </tr>
+  <tr>
+    <td align="center">Bottom left</td>
+    <td align="center">Bottom right</td>
+  </tr>
+</table>
+
+Both pictures appear upright once the monitor is turned as described in the table above.
 
 ***
 
