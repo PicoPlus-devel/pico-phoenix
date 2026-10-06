@@ -1,0 +1,48 @@
+# Build trees (bld.sh recreates build/ on every run)
+**/build*/
+CMakeFiles/
+CMakeCache.txt
+compile_commands.json
+
+# Release outputs (buildAll.sh, bld.sh -b)
+releases/
+releases_bl/
+*.uf2
+*.elf
+*.elf.map
+*.dis
+*.bin
+*.hex
+
+# Phoenix ROM data. Copyright Amstar - it must never be committed, in any form.
+/roms/
+*.zip
+ic45
+ic46
+ic47
+ic48
+h?-ic*.?a
+ic23.3d
+ic24.4d
+b?-ic*.?b
+mmi6301.ic4?
+
+# Host harness (hosttest/) binaries and outputs
+hosttest/phx_host
+hosttest/cpm_host
+hosttest/out*/
+hosttest/**/*.ppm
+hosttest/**/*.png
+hosttest/**/*.wav
+
+# Python
+__pycache__/
+*.pyc
+
+# Editors and OS cruft
+.vscode/
+.idea/
+*~
+*.swp
+.DS_Store
+*Zone.Identifier
