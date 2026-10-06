@@ -286,6 +286,7 @@ void mm6221aa_tune_w(tms36xx_t *t, int tune)
     if (tune == t->tune_num)
         return;
     t->tune_num = tune;
+    t->tune = tunes[tune];
     t->tune_ofs = 0;
     t->tune_max = 96; /* fixed for now */
 }
@@ -296,7 +297,7 @@ int PHX_HOT(tms36xx_sample)(tms36xx_t *t)
     int sum = 0;
 
     /* no tune played? */
-    if (!tunes[t->tune_num] || t->voices == 0)
+    if (!t->tune || t->voices == 0)
         return 0;
 
     /* decay the twelve voices */
@@ -333,7 +334,7 @@ int PHX_HOT(tms36xx_sample)(tms36xx_t *t)
                 /* shift to the other 'bank' of voices */
                 t->shift ^= 6;
                 /* restart one 'bank' of voices */
-                const int *tune = tunes[t->tune_num];
+                const int *tune = t->tune;
                 for (int v = 0; v < 6; v++)
                 {
                     if (tune[t->tune_ofs * 6 + v])

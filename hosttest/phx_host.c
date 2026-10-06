@@ -239,6 +239,8 @@ int main(int argc, char **argv)
         double t0 = now_s();
         phx_run_frame(&m, audio);
         double t1 = now_s();
+        if (f == 0)
+            phx_render_borders(&gfx, (phx_orient_t)tate, fb, 320);
         phx_render(&gfx, &m.video, (phx_orient_t)tate, fb, 320);
         double t2 = now_s();
         t_emu += t1 - t0;

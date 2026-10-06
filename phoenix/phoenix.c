@@ -37,7 +37,7 @@ static void map_vram_page(phx_t *m)
 }
 
 /* Bring the sound stream up to the CPU's current position in the frame. */
-static void sound_catchup(phx_t *m)
+static void PHX_HOT(sound_catchup)(phx_t *m)
 {
     if (!m->audio)
         return;
@@ -168,14 +168,24 @@ void phx_reset(phx_t *m)
     memset(&m->video, 0, sizeof(m->video));
 }
 
-static void run_until(phx_t *m, int cycle)
+static void PHX_HOT(run_until)(phx_t *m, int cycle)
 {
     int start = m->slice_end;
     m->slice_end = cycle;
     i8085_run(&m->cpu, cycle - start);
 }
 
-void phx_run_frame(phx_t *m, int16_t *audio)
+/* Word copy for the per-frame paths: memcpy lives in flash. The core is built
+ * with -fno-tree-loop-distribute-patterns so this stays a loop. */
+static inline void copy_words(void *dst, const void *src, int bytes)
+{
+    uint32_t *d = (uint32_t *)dst;
+    const uint32_t *s = (const uint32_t *)src;
+    for (int i = 0; i < bytes / 4; i++)
+        d[i] = s[i];
+}
+
+void PHX_HOT(phx_run_frame)(phx_t *m, int16_t *audio)
 {
     m->audio = audio;
     m->audio_pos = 0;
@@ -187,8 +197,8 @@ void phx_run_frame(phx_t *m, int16_t *audio)
 
     /* VBLANK starts: this is when MAME draws the screen */
     const uint8_t *page = m->vram[m->vram_page];
-    memcpy(m->video.fg, page, sizeof(m->video.fg));
-    memcpy(m->video.bg, page + 0x800, sizeof(m->video.bg));
+    copy_words(m->video.fg, page, sizeof(m->video.fg));
+    copy_words(m->video.bg, page + 0x800, sizeof(m->video.bg));
     m->video.scroll = m->scroll;
     m->video.palette_bank = m->palette_bank;
 
@@ -393,10 +403,44 @@ static void PHX_HOT(render_raw_line)(const phx_gfx_t *g, const phx_video_t *v, i
     }
 }
 
+/* Game area of each orientation in the 320x240 canvas */
+static void game_area(phx_orient_t orient, int *x0, int *y0, int *w, int *h)
+{
+    if (orient == PHX_ORIENT_ROTATED)
+    {
+        *w = PHX_RAW_HEIGHT; /* 208 */
+        *h = CANVAS_H;       /* 240 */
+    }
+    else
+    {
+        *w = PHX_RAW_WIDTH;  /* 256 */
+        *h = PHX_RAW_HEIGHT; /* 208 */
+    }
+    *x0 = (CANVAS_W - *w) / 2;
+    *y0 = (CANVAS_H - *h) / 2;
+}
+
+void phx_render_borders(const phx_gfx_t *g, phx_orient_t orient, uint16_t *fb, int stride)
+{
+    int x0, y0, w, h;
+    game_area(orient, &x0, &y0, &w, &h);
+    for (int r = 0; r < CANVAS_H; r++)
+    {
+        uint16_t *row = fb + r * stride;
+        if (r < y0 || r >= y0 + h)
+        {
+            fill(row, CANVAS_W, g->black);
+        }
+        else
+        {
+            fill(row, x0, g->black);
+            fill(row + x0 + w, CANVAS_W - x0 - w, g->black);
+        }
+    }
+}
+
 void PHX_HOT(phx_render)(const phx_gfx_t *g, const phx_video_t *v, phx_orient_t orient, uint16_t *fb, int stride)
 {
-    const uint16_t black = g->black;
-
     if (orient == PHX_ORIENT_ROTATED)
     {
         /* Upright 208 x 256 picture: display (dx, dy) shows raw (x = dy,
@@ -406,15 +450,11 @@ void PHX_HOT(phx_render)(const phx_gfx_t *g, const phx_video_t *v, phx_orient_t 
         const int pb = v->palette_bank << 4;
         for (int r = 0; r < CANVAS_H; r++)
         {
-            uint16_t *row = fb + r * stride;
-            fill(row, left, black);
-            fill(row + left + PHX_RAW_HEIGHT, CANVAS_W - left - PHX_RAW_HEIGHT, black);
-
             const int x = (r * 16) / 15;
             const int tx = x >> 3, px = x & 7;
             const int bx = (x + v->scroll) & 0xff;
             const int btx = bx >> 3, bpx = bx & 7;
-            uint16_t *dst = row + left;
+            uint16_t *dst = fb + r * stride + left;
             for (int ty = PHX_RAW_HEIGHT / 8 - 1; ty >= 0; ty--)
             {
                 uint8_t fc = v->fg[ty * 32 + tx];
@@ -436,29 +476,19 @@ void PHX_HOT(phx_render)(const phx_gfx_t *g, const phx_video_t *v, phx_orient_t 
     /* Tate: raw 256 x 208, centred */
     const int left = (CANVAS_W - PHX_RAW_WIDTH) / 2; /* 32 */
     const int top = (CANVAS_H - PHX_RAW_HEIGHT) / 2; /* 16 */
-    for (int r = 0; r < top; r++)
-        fill(fb + r * stride, CANVAS_W, black);
-    for (int r = top + PHX_RAW_HEIGHT; r < CANVAS_H; r++)
-        fill(fb + r * stride, CANVAS_W, black);
-
-    uint16_t line[PHX_RAW_WIDTH];
+    uint16_t line[PHX_RAW_WIDTH] __attribute__((aligned(4)));
     for (int y = 0; y < PHX_RAW_HEIGHT; y++)
     {
         render_raw_line(g, v, y, line);
         if (orient == PHX_ORIENT_TATE_CW)
         {
-            uint16_t *row = fb + (top + y) * stride;
-            fill(row, left, black);
-            memcpy(row + left, line, sizeof(line));
-            fill(row + left + PHX_RAW_WIDTH, CANVAS_W - left - PHX_RAW_WIDTH, black);
+            copy_words(fb + (top + y) * stride + left, line, sizeof(line));
         }
         else
         {
-            uint16_t *row = fb + (top + PHX_RAW_HEIGHT - 1 - y) * stride;
-            fill(row, left, black);
+            uint16_t *row = fb + (top + PHX_RAW_HEIGHT - 1 - y) * stride + left;
             for (int x = 0; x < PHX_RAW_WIDTH; x++)
-                row[left + x] = line[PHX_RAW_WIDTH - 1 - x];
-            fill(row + left + PHX_RAW_WIDTH, CANVAS_W - left - PHX_RAW_WIDTH, black);
+                row[x] = line[PHX_RAW_WIDTH - 1 - x];
         }
     }
 }

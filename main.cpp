@@ -320,7 +320,8 @@ static bool loadRoms()
 }
 
 // ---------------------------------------------------------------------------
-// Audio: one frame of mono samples to whichever sink is active.
+// Audio: one frame of mono samples to whichever sink is active. Runs from SRAM
+// (noinline, or it would be folded into the flash-resident caller).
 // ---------------------------------------------------------------------------
 static inline int16_t applyDviGain(int x)
 {
@@ -332,7 +333,7 @@ static inline int16_t applyDviGain(int x)
     return (int16_t)v;
 }
 
-static void __not_in_flash_func(pushAudio)(const int16_t *buf, int n)
+static void __noinline __not_in_flash_func(pushAudio)(const int16_t *buf, int n)
 {
     const bool mute = !settings.flags.audioEnabled;
 
@@ -400,16 +401,39 @@ static void __not_in_flash_func(pushAudio)(const int16_t *buf, int n)
 // Video: draw the frame the machine finished last, plus the FPS digits. Called
 // right after the frame pace returns, i.e. at the start of output VBLANK, so
 // the single-buffered framebuffer is rewritten ahead of scan-out.
+//
+// The borders are painted only when they need it: at the first frame, when the
+// orientation changes, after the settings menu has drawn over the screen, and
+// when the FPS counter is switched off. The counter lives in the border, so it
+// is overwritten in place every frame instead of being cleared and redrawn -
+// clearing it with the whole canvas, as a full repaint did, erased it just
+// before the display scanned the top rows, and it was rarely seen.
 // ---------------------------------------------------------------------------
-static void __not_in_flash_func(presentFrame)()
-{
-    phx_render(&gfx, &machine.video, (phx_orient_t)settings.flags.tateMode, fbLine(0), SCREENWIDTH);
+static bool bordersValid = false;
+static int bordersOrient = -1;
+static bool fpsShown = false;
 
-    if (settings.flags.displayFrameRate)
+static void __noinline __not_in_flash_func(presentFrame)()
+{
+    const phx_orient_t orient = (phx_orient_t)settings.flags.tateMode;
+    const bool showFps = settings.flags.displayFrameRate;
+
+    if (!bordersValid || orient != bordersOrient || (fpsShown && !showFps))
+    {
+        phx_render_borders(&gfx, orient, fbLine(0), SCREENWIDTH);
+        bordersValid = true;
+        bordersOrient = orient;
+    }
+    fpsShown = showFps;
+
+    phx_render(&gfx, &machine.video, orient, fbLine(0), SCREENWIDTH);
+
+    if (showFps)
     {
         char s[3] = {(char)('0' + (fps / 10) % 10), (char)('0' + fps % 10), 0};
-        // In every orientation the top-left corner is border, not game.
-        screenText(0, 1, s, rgb(255, 255, 255), rgb(0, 0, 0));
+        // Cell (1, 1): in every orientation that is border, not game, and one
+        // cell in from the corner a TV that overscans cuts off.
+        screenText(1, 1, s, rgb(255, 255, 255), rgb(0, 0, 0));
     }
 }
 
@@ -482,6 +506,9 @@ static uint32_t readPads(uint16_t wii, uint32_t *pad2)
 // SELECT doubles as the modifier of SELECT+START (settings menu), so the coin
 // is inserted when SELECT is released, and only if no other button was pressed
 // while it was held. A coin switch is a pulse; it is held for a few frames.
+//
+// START + A toggles the frame rate display, as in the sibling emulators. While
+// START is held, A therefore does not fire.
 static bool selectUsedAsModifier = false;
 static uint32_t prevButtons = 0;
 static int coinFrames = 0;
@@ -501,6 +528,10 @@ static uint8_t mapInputs(uint32_t buttons, uint32_t pad2)
     typedef io::GamePadState::Button B;
     static uint32_t frame = 0;
     frame++;
+    const uint32_t pushed = buttons & ~prevButtons;
+
+    if ((buttons & B::START) && (pushed & B::A))
+        settings.flags.displayFrameRate = !settings.flags.displayFrameRate;
 
     if (buttons & B::SELECT)
     {
@@ -534,7 +565,7 @@ static uint8_t mapInputs(uint32_t buttons, uint32_t pad2)
         in |= PHX_IN_RIGHT;
     if (buttons & (B::B | B::Y))
         in |= PHX_IN_SHIELD;
-    if (buttons & (B::A | B::X))
+    if ((buttons & B::X) || ((buttons & B::A) && !(buttons & B::START)))
     {
         // Rapid fire: 4 frames pressed, 4 released.
         if (!settings.flags.rapidFireOnA || (frame & 4))
@@ -610,6 +641,7 @@ static void processPerFrame()
         }
         if (rval == 5) // Reset Game
             phx_reset(&machine);
+        bordersValid = false; // the menu drew over the whole screen
         Frens::PaceFrames60fps(true);
         lastFrameUs = Frens::time_us();
         return;

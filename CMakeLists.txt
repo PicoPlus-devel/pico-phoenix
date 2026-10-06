@@ -107,7 +107,11 @@ target_compile_definitions(${projectname} PRIVATE
 )
 
 # The core runs every frame; build it for speed regardless of the build type.
-set_source_files_properties(${PHOENIX_CORE_SRC} PROPERTIES COMPILE_OPTIONS "-O2")
+# Its hot functions are placed in SRAM (PHX_HOT in phoenix/phx_port.h), and
+# -fno-tree-loop-distribute-patterns keeps GCC from turning their copy loops
+# back into calls to memcpy, which lives in flash.
+set_source_files_properties(${PHOENIX_CORE_SRC} PROPERTIES
+    COMPILE_OPTIONS "-O2;-fno-tree-loop-distribute-patterns")
 
 pico_set_program_name(${projectname} "${projectname}")
 pico_set_program_version(${projectname} "0.1")

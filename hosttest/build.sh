@@ -12,6 +12,7 @@ cd "$(dirname "$0")/.."
 OPT=${OPT:--O1 -g -fsanitize=address -fno-omit-frame-pointer}
 CFLAGS=(
   $OPT -std=c11 -Wall -Wextra -Wno-unused-parameter
+  -Wno-maybe-uninitialized   # as the firmware build; GCC cannot see render_raw_line fill the line
   -D_DEFAULT_SOURCE
   -I phoenix -I third_party/miniz
   -DMINIZ_NO_STDIO -DMINIZ_NO_TIME -DMINIZ_NO_ARCHIVE_APIS -DMINIZ_NO_DEFLATE_APIS

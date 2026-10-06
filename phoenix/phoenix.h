@@ -54,8 +54,8 @@ typedef struct
 /* What the renderer needs, copied at the start of VBLANK */
 typedef struct
 {
-    uint8_t fg[0x340];
-    uint8_t bg[0x340];
+    uint8_t fg[0x340] __attribute__((aligned(4))); /* copied word by word */
+    uint8_t bg[0x340] __attribute__((aligned(4)));
     uint8_t scroll;
     uint8_t palette_bank;
 } phx_video_t;
@@ -64,7 +64,7 @@ typedef struct phx
 {
     i8085_t cpu;
     const phx_roms_t *roms;
-    uint8_t vram[2][0x1000]; /* tilemaps + work RAM, one page per player */
+    uint8_t vram[2][0x1000] __attribute__((aligned(4))); /* tilemaps + work RAM, one page per player */
     uint8_t vram_page;
     uint8_t palette_bank;
     uint8_t scroll;
@@ -121,10 +121,17 @@ typedef struct
 
 void phx_gfx_init(phx_gfx_t *g, const phx_roms_t *roms, phx_pixfmt_t fmt);
 
-/* Draws the frame into a 320x240 canvas (stride in pixels), including the
- * black borders. Rotated mode shows the 208x256 picture as 208x240 by
- * dropping every 16th row. */
+/* Draws the game area of the frame into a 320x240 canvas (stride in pixels).
+ * Rotated mode shows the 208x256 picture as 208x240, centred, by dropping
+ * every 16th row; tate shows the 256x208 raster centred.
+ *
+ * The borders around the game area are not touched, so anything drawn there
+ * (the FPS counter) survives from frame to frame instead of being erased and
+ * redrawn while the display is scanning it out. Paint them with
+ * phx_render_borders() whenever the orientation changes or something else
+ * has drawn over the canvas. */
 void phx_render(const phx_gfx_t *g, const phx_video_t *v, phx_orient_t orient, uint16_t *fb, int stride);
+void phx_render_borders(const phx_gfx_t *g, phx_orient_t orient, uint16_t *fb, int stride);
 
 #ifdef __cplusplus
 }

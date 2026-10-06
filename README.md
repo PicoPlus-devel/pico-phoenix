@@ -97,9 +97,10 @@ Phoenix has a two-way joystick and two buttons. Two players take turns on the sa
 | START | 1 player start |
 | D-pad up | 2 player start |
 | START on a second USB controller | 2 player start |
+| START + A | Frame rate display on/off |
 | SELECT + START | Settings menu |
 
-USB game controllers, NES and SNES controllers on the GPIO ports and the Wii Classic controller are supported, as in the other emulators of this family. The coin is inserted when SELECT is released, and only when no other button was pressed while it was held, so opening the settings menu does not insert a coin.
+USB game controllers, NES and SNES controllers on the GPIO ports and the Wii Classic controller are supported, as in the other emulators of this family. The coin is inserted when SELECT is released, and only when no other button was pressed while it was held, so opening the settings menu does not insert a coin. While START is held, A switches the frame rate display (top left, in the border) on or off instead of firing; the same setting is also in the settings menu.
 
 The game is set to its factory defaults: 3 lives, a bonus ship at 3,000 and 30,000 points, and 1 coin for 1 credit.
 

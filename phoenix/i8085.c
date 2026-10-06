@@ -11,6 +11,11 @@
 
 #include "phx_port.h"
 
+/* Every helper below is forced inline: left to the compiler, rd() and
+ * op_push() were emitted as separate functions in flash, and every emulated
+ * memory access branched out of the SRAM-resident execute_one(). */
+#define I8085_INLINE static inline __attribute__((always_inline))
+
 #define SF  0x80
 #define ZF  0x40
 #define KF  0x20
@@ -29,7 +34,8 @@
 #define IM_M65 0x02
 #define IM_M55 0x01
 
-static const uint8_t lut_cycles_8080[256] = {
+/* Not const: read on every instruction, so they belong in RAM, not flash. */
+static uint8_t lut_cycles_8080[256] = {
     /*      0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  */
     /* 0 */ 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4,
     /* 1 */ 4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4,
@@ -48,7 +54,7 @@ static const uint8_t lut_cycles_8080[256] = {
     /* E */ 5, 10, 10, 18, 11, 11, 7, 11, 5, 5, 10, 4, 11, 11, 7, 11,
     /* F */ 5, 10, 10, 4, 11, 11, 7, 11, 5, 5, 10, 4, 11, 11, 7, 11};
 
-static const uint8_t lut_cycles_8085[256] = {
+static uint8_t lut_cycles_8085[256] = {
     /*      0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  */
     /* 0 */ 4, 10, 7, 6, 4, 4, 7, 4, 10, 10, 7, 6, 4, 4, 7, 4,
     /* 1 */ 7, 10, 7, 6, 4, 4, 7, 4, 10, 10, 7, 6, 4, 4, 7, 4,
@@ -111,13 +117,13 @@ void i8085_reset(i8085_t *cpu)
  * Memory access
  * ---------------------------------------------------------------------- */
 
-static inline uint8_t rd(i8085_t *c, uint16_t a)
+I8085_INLINE uint8_t rd(i8085_t *c, uint16_t a)
 {
     const uint8_t *p = c->rd_page[a >> 8];
     return p ? p[a & 0xff] : c->read(c, a);
 }
 
-static inline void wr(i8085_t *c, uint16_t a, uint8_t v)
+I8085_INLINE void wr(i8085_t *c, uint16_t a, uint8_t v)
 {
     uint8_t *p = c->wr_page[a >> 8];
     if (p)
@@ -126,12 +132,12 @@ static inline void wr(i8085_t *c, uint16_t a, uint8_t v)
         c->write(c, a, v);
 }
 
-static inline uint8_t read_arg(i8085_t *c)
+I8085_INLINE uint8_t read_arg(i8085_t *c)
 {
     return rd(c, c->pc.w++);
 }
 
-static inline i8085_pair_t read_arg16(i8085_t *c)
+I8085_INLINE i8085_pair_t read_arg16(i8085_t *c)
 {
     i8085_pair_t p;
     p.b.l = rd(c, c->pc.w++);
@@ -139,13 +145,13 @@ static inline i8085_pair_t read_arg16(i8085_t *c)
     return p;
 }
 
-static inline void op_push(i8085_t *c, i8085_pair_t p)
+I8085_INLINE void op_push(i8085_t *c, i8085_pair_t p)
 {
     wr(c, --c->sp.w, p.b.h);
     wr(c, --c->sp.w, p.b.l);
 }
 
-static inline i8085_pair_t op_pop(i8085_t *c)
+I8085_INLINE i8085_pair_t op_pop(i8085_t *c)
 {
     i8085_pair_t p;
     p.b.l = rd(c, c->sp.w++);
@@ -160,19 +166,19 @@ static inline i8085_pair_t op_pop(i8085_t *c)
 #define A (c->af.b.h)
 #define F (c->af.b.l)
 
-static inline void op_ora(i8085_t *c, uint8_t v)
+I8085_INLINE void op_ora(i8085_t *c, uint8_t v)
 {
     A |= v;
     F = lut_zsp[A];
 }
 
-static inline void op_xra(i8085_t *c, uint8_t v)
+I8085_INLINE void op_xra(i8085_t *c, uint8_t v)
 {
     A ^= v;
     F = lut_zsp[A];
 }
 
-static inline void op_ana(i8085_t *c, uint8_t v)
+I8085_INLINE void op_ana(i8085_t *c, uint8_t v)
 {
     uint8_t hc = ((A | v) << 1) & HF;
     A &= v;
@@ -180,55 +186,55 @@ static inline void op_ana(i8085_t *c, uint8_t v)
     F |= c->is_8085 ? HF : hc;
 }
 
-static inline uint8_t op_inr(i8085_t *c, uint8_t v)
+I8085_INLINE uint8_t op_inr(i8085_t *c, uint8_t v)
 {
     uint8_t hc = ((v & 0x0f) == 0x0f) ? HF : 0;
     F = (F & CF) | lut_zsp[(uint8_t)(++v)] | hc;
     return v;
 }
 
-static inline uint8_t op_dcr(i8085_t *c, uint8_t v)
+I8085_INLINE uint8_t op_dcr(i8085_t *c, uint8_t v)
 {
     uint8_t hc = ((v & 0x0f) != 0x00) ? HF : 0;
     F = (F & CF) | lut_zsp[(uint8_t)(--v)] | hc | VF;
     return v;
 }
 
-static inline void op_add(i8085_t *c, uint8_t v)
+I8085_INLINE void op_add(i8085_t *c, uint8_t v)
 {
     int q = A + v;
     F = lut_zsp[q & 0xff] | ((q >> 8) & CF) | ((A ^ q ^ v) & HF);
     A = q;
 }
 
-static inline void op_adc(i8085_t *c, uint8_t v)
+I8085_INLINE void op_adc(i8085_t *c, uint8_t v)
 {
     int q = A + v + (F & CF);
     F = lut_zsp[q & 0xff] | ((q >> 8) & CF) | ((A ^ q ^ v) & HF);
     A = q;
 }
 
-static inline void op_sub(i8085_t *c, uint8_t v)
+I8085_INLINE void op_sub(i8085_t *c, uint8_t v)
 {
     int q = A - v;
     F = lut_zsp[q & 0xff] | ((q >> 8) & CF) | (~(A ^ q ^ v) & HF) | VF;
     A = q;
 }
 
-static inline void op_sbb(i8085_t *c, uint8_t v)
+I8085_INLINE void op_sbb(i8085_t *c, uint8_t v)
 {
     int q = A - v - (F & CF);
     F = lut_zsp[q & 0xff] | ((q >> 8) & CF) | (~(A ^ q ^ v) & HF) | VF;
     A = q;
 }
 
-static inline void op_cmp(i8085_t *c, uint8_t v)
+I8085_INLINE void op_cmp(i8085_t *c, uint8_t v)
 {
     int q = A - v;
     F = lut_zsp[q & 0xff] | ((q >> 8) & CF) | (~(A ^ q ^ v) & HF) | VF;
 }
 
-static inline void op_dad(i8085_t *c, uint16_t v)
+I8085_INLINE void op_dad(i8085_t *c, uint16_t v)
 {
     int q = c->hl.w + v;
     F = (F & ~CF) | ((q >> 16) & CF);
@@ -240,7 +246,7 @@ static inline void op_dad(i8085_t *c, uint16_t v)
 #define CALL_TAKEN() (c->is_8085 ? 9 : 6)
 #define RET_TAKEN() 6
 
-static inline void op_jmp(i8085_t *c, int cond)
+I8085_INLINE void op_jmp(i8085_t *c, int cond)
 {
     if (cond)
     {
@@ -253,7 +259,7 @@ static inline void op_jmp(i8085_t *c, int cond)
     }
 }
 
-static inline void op_call(i8085_t *c, int cond)
+I8085_INLINE void op_call(i8085_t *c, int cond)
 {
     if (cond)
     {
@@ -268,7 +274,7 @@ static inline void op_call(i8085_t *c, int cond)
     }
 }
 
-static inline void op_ret(i8085_t *c, int cond)
+I8085_INLINE void op_ret(i8085_t *c, int cond)
 {
     if (cond)
     {
@@ -277,7 +283,7 @@ static inline void op_ret(i8085_t *c, int cond)
     }
 }
 
-static inline void op_rst(i8085_t *c, uint8_t v)
+I8085_INLINE void op_rst(i8085_t *c, uint8_t v)
 {
     op_push(c, c->pc);
     c->pc.w = 8 * v;

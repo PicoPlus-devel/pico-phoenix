@@ -4,14 +4,17 @@
  * Phoenix sound board, ported from MAME's phoenix_a.cpp. See phoenix_sound.h.
  *
  * All analog maths is single precision: the RP2350's FPU has no double
- * support. The RC exponents use expm1f/log1pf so that the long time constants
- * (up to a second) keep their accuracy at a 44.1 kHz step.
+ * support. The RC exponents use expm1 and log1p so that the long time
+ * constants (up to a second) keep their accuracy at a 44.1 kHz step; the
+ * versions in phx_math.h are inlined so that the per-sample path never leaves
+ * SRAM.
  */
 #include "phoenix_sound.h"
 
 #include <math.h>
 #include <string.h>
 
+#include "phx_math.h"
 #include "phx_port.h"
 
 #define VMIN 0
@@ -27,9 +30,9 @@
 #define DISC_555_OUT_COUNT_F_X 0x06
 
 /* 1 - exp(-dt/rc), the per-step charge fraction (MAME RC_CHARGE_EXP) */
-static float rc_charge_exp(float dt, float rc)
+PHX_ALWAYS_INLINE float rc_charge_exp(float dt, float rc)
 {
-    return -expm1f(-dt / rc);
+    return -phx_expm1f(-dt / rc);
 }
 
 static float par2(float a, float b)
@@ -41,7 +44,7 @@ static float par2(float a, float b)
  * Custom noise generator (phoenix_sound_device)
  * ------------------------------------------------------------------------ */
 
-static int update_c24(phx_sound_t *s)
+PHX_ALWAYS_INLINE int update_c24(phx_sound_t *s)
 {
     /* Bit 6 lo charges C24 (6.8u) via R51 (330) and when bit 6 is hi, C24 is
      * discharged through R52 (20k) in approx. 20000 * 6.8e-6 = 0.136 s */
@@ -81,7 +84,7 @@ static int update_c24(phx_sound_t *s)
     return VMAX - s->c24_level;
 }
 
-static int update_c25(phx_sound_t *s)
+PHX_ALWAYS_INLINE int update_c25(phx_sound_t *s)
 {
     /* Bit 7 hi charges C25 (6.8u) over R50 (1k) and R53 (330) and when bit 7
      * is lo, C25 is discharged through R54 (47k) in about 0.3196 s */
@@ -125,7 +128,7 @@ static int update_c25(phx_sound_t *s)
  * EXNOR feedback) into a 32 KB table and indexes it with polyoffs. Stepping
  * the register itself gives the same bit for every offset, without the table:
  * bit p of the table is bit 0 of the register after p steps from zero. */
-static void noise_advance(phx_sound_t *s, int n)
+PHX_ALWAYS_INLINE void noise_advance(phx_sound_t *s, int n)
 {
     while (n-- > 0)
     {
@@ -140,7 +143,7 @@ static void noise_advance(phx_sound_t *s, int n)
     s->noise_polybit = s->noise_lfsr & 1;
 }
 
-static int noise(phx_sound_t *s)
+PHX_ALWAYS_INLINE int noise(phx_sound_t *s)
 {
     const int samplerate = s->samplerate;
     int vc24 = update_c24(s);
@@ -262,7 +265,7 @@ static float PHX_HOT(d555_step)(phx_555_t *d, float c, float cv, float sample_ti
             if (v_cap_next >= threshold)
             {
                 /* calculate the overshoot time */
-                dt = -d->t_rc_charge * log1pf(-((v_cap_next - threshold) / (d->v_charge - v_cap)));
+                dt = -d->t_rc_charge * phx_log1pf_neg((v_cap_next - threshold) / (d->v_charge - v_cap));
                 x_time = dt;
                 v_cap_next = threshold;
                 flip_flop = 0;
@@ -282,7 +285,7 @@ static float PHX_HOT(d555_step)(phx_555_t *d, float c, float cv, float sample_ti
             {
                 /* calculate the overshoot time */
                 if (v_cap_next < trigger)
-                    dt = -d->t_rc_discharge * log1pf(-((trigger - v_cap_next) / v_cap));
+                    dt = -d->t_rc_discharge * phx_log1pf_neg((trigger - v_cap_next) / v_cap);
                 x_time = dt;
                 v_cap_next = trigger;
                 flip_flop = 1;
@@ -317,7 +320,7 @@ static float PHX_HOT(d555_step)(phx_555_t *d, float c, float cv, float sample_ti
 }
 
 /* DSS_NOTE step, DISC_CLK_BY_COUNT | DISC_OUT_IS_ENERGY */
-static float note_step(phx_note_t *n, float clk, int data)
+PHX_ALWAYS_INLINE float note_step(phx_note_t *n, float clk, int data)
 {
     int clock = (int)clk;
     float x_time = clk - clock;

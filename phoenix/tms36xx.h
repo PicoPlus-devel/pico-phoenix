@@ -32,6 +32,7 @@ typedef struct
     int output;
     int enable;
     int tune_num;
+    const int *tune; /* tunes[tune_num], so the sample loop never reads the flash table */
     int tune_ofs;
     int tune_max;
 } tms36xx_t;
