@@ -63,6 +63,8 @@ The ROM sets of the clones (Centuri, Taito, Condor, Falcon, Vautour and others) 
 
 pico-phoenix runs on every RP2350 configuration of this family. It requires neither PSRAM nor HSTX: the emulated board is small enough for the internal SRAM, and both video back-ends are supported. RP2040 boards are not supported.
 
+Development and testing take place on the Adafruit Fruit Jam (HW_CONFIG 8). The other configurations are built from the same source, but have not all been tested on hardware.
+
 | HW_CONFIG | Hardware | Video | Binary |
 | --- | --- | --- | --- |
 | 1 | Pimoroni Pico DV Demo Base with a Raspberry Pi Pico 2 | PicoDVI | `picoPhoenix_PimoroniDVI_pico2_arm.uf2` |
@@ -80,7 +82,7 @@ pico-phoenix runs on every RP2350 configuration of this family. It requires neit
 
 For wiring and assembly instructions, see the setup sections of the [pico-infonesPlus README](https://github.com/PicoPlus-devel/pico-infonesPlus#setup). To flash a board, hold BOOTSEL while connecting it over USB, then copy the `.uf2` file onto the USB drive that appears.
 
-Audio is sent over HDMI. Boards with an I2S DAC (configurations 8, 13 and 14) can use it instead through the *External Audio* setting; on the Fruit Jam, plugging in headphones selects it automatically. Configuration 15 also plays the sound on its PWM audio jack.
+Audio is sent over HDMI. Boards with an I2S DAC (configurations 1, 8, 12, 13 and 14) can use it instead through the *External Audio* setting; on the Fruit Jam, plugging in headphones selects it automatically. Configuration 15 also plays the sound on its PWM audio jack.
 
 ***
 
