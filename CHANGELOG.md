@@ -8,6 +8,10 @@ First release of pico-phoenix: the arcade game Phoenix (Amstar, 1980) for RP2350
 
 The game ROMs are not included. Copy MAME's `phoenix.zip` to `/roms/arcade/PHOENIX` on the SD card, as it is or unzipped. See the [README](https://github.com/PicoPlus-devel/pico-phoenix#game-data).
 
+# v0.2
+
+- **Settings are shared with the other arcade games** of this family and stored in `/settings_ARC.dat`. Settings saved by v0.1 are not carried over, so they return to their defaults once.
+
 # v0.1
 
 Initial release.

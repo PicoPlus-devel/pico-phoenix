@@ -674,7 +674,7 @@ int main()
     printf("HW_CONFIG=%d  HSTX=%d  CPU freq: %lu kHz\n", HW_CONFIG, HSTX, (unsigned long)(clock_get_hz(clk_sys) / 1000));
     printf("==========================================================================================\n");
 
-    FrensSettings::initSettings(FrensSettings::PHOENIX);
+    FrensSettings::initSettings(FrensSettings::ARCADE);
 
     // No ROM is ever selected through the browser; the set is read below.
     char dummyRom[FF_MAX_LFN];
@@ -686,12 +686,16 @@ int main()
         // loadsettings() inside initAll resets every setting when
         // settings.currentDir does not exist. There is no ROM browser to
         // create it, so make it (FR_EXIST later on is fine) and load again.
+        // ROMDIR is made too, so the user sees where the ROM set goes.
         f_mkdir("/roms");
         f_mkdir("/roms/arcade");
         f_mkdir(ROMDIR);
         FrensSettings::loadsettings();
     }
-    strcpy(settings.currentDir, ROMDIR);
+    // All arcade games share /settings_ARC.dat and with it currentDir. Keep it
+    // at /roms/arcade, which every arcade game creates: a game's own folder
+    // would make the next game reset its settings when that folder is missing.
+    strcpy(settings.currentDir, "/roms/arcade");
     g_settings_visibility = g_settings_visibility_phoenix;
     g_available_screen_modes = g_available_screen_modes_phoenix;
     if (!g_available_screen_modes[static_cast<int>(settings.screenMode)])
