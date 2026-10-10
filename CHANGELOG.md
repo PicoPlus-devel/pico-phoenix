@@ -1,6 +1,6 @@
 # CHANGELOG
 
-First release of pico-phoenix: the arcade game Phoenix (Amstar, 1980) for RP2350 boards with HDMI/DVI output.
+pico-phoenix: the arcade game Phoenix (Amstar, 1980) for RP2350 boards with HDMI/DVI output.
 
 # General Info
 
@@ -11,6 +11,7 @@ The game ROMs are not included. Copy MAME's `phoenix.zip` to `/roms/arcade/PHOEN
 # v0.2
 
 - **Settings are shared with the other arcade games** of this family and stored in `/settings_ARC.dat`. Settings saved by v0.1 are not carried over, so they return to their defaults once.
+- The menu colour settings are no longer shown in the settings menu.
 
 # v0.1
 
