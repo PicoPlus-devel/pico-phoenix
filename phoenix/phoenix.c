@@ -403,10 +403,20 @@ static void PHX_HOT(render_raw_line)(const phx_gfx_t *g, const phx_video_t *v, i
     }
 }
 
-/* Game area of each orientation in the 320x240 canvas */
-static void game_area(phx_orient_t orient, int *x0, int *y0, int *w, int *h)
+/* The canvas of each orientation (320x240, or stride x 256 for rotated
+ * full) and the game area in it */
+static void game_area(phx_orient_t orient, int stride, int *cw, int *ch, int *x0, int *y0, int *w, int *h)
 {
-    if (orient == PHX_ORIENT_ROTATED)
+    *cw = CANVAS_W;
+    *ch = CANVAS_H;
+    if (orient == PHX_ORIENT_ROTATED_FULL)
+    {
+        *cw = stride;
+        *ch = PHX_RAW_WIDTH; /* 256 */
+        *w = PHX_RAW_HEIGHT; /* 208 */
+        *h = PHX_RAW_WIDTH;  /* 256 */
+    }
+    else if (orient == PHX_ORIENT_ROTATED)
     {
         *w = PHX_RAW_HEIGHT; /* 208 */
         *h = CANVAS_H;       /* 240 */
@@ -416,41 +426,44 @@ static void game_area(phx_orient_t orient, int *x0, int *y0, int *w, int *h)
         *w = PHX_RAW_WIDTH;  /* 256 */
         *h = PHX_RAW_HEIGHT; /* 208 */
     }
-    *x0 = (CANVAS_W - *w) / 2;
-    *y0 = (CANVAS_H - *h) / 2;
+    *x0 = (*cw - *w) / 2;
+    *y0 = (*ch - *h) / 2;
 }
 
 void phx_render_borders(const phx_gfx_t *g, phx_orient_t orient, uint16_t *fb, int stride)
 {
-    int x0, y0, w, h;
-    game_area(orient, &x0, &y0, &w, &h);
-    for (int r = 0; r < CANVAS_H; r++)
+    int cw, ch, x0, y0, w, h;
+    game_area(orient, stride, &cw, &ch, &x0, &y0, &w, &h);
+    for (int r = 0; r < ch; r++)
     {
         uint16_t *row = fb + r * stride;
         if (r < y0 || r >= y0 + h)
         {
-            fill(row, CANVAS_W, g->black);
+            fill(row, cw, g->black);
         }
         else
         {
             fill(row, x0, g->black);
-            fill(row + x0 + w, CANVAS_W - x0 - w, g->black);
+            fill(row + x0 + w, cw - x0 - w, g->black);
         }
     }
 }
 
 void PHX_HOT(phx_render)(const phx_gfx_t *g, const phx_video_t *v, phx_orient_t orient, uint16_t *fb, int stride)
 {
-    if (orient == PHX_ORIENT_ROTATED)
+    if (orient == PHX_ORIENT_ROTATED || orient == PHX_ORIENT_ROTATED_FULL)
     {
         /* Upright 208 x 256 picture: display (dx, dy) shows raw (x = dy,
-         * y = 207 - dx). 256 rows into 240: output row r shows dy = r*16/15,
-         * so every 16th row (dy = 15, 31, ...) is dropped. */
-        const int left = (CANVAS_W - PHX_RAW_HEIGHT) / 2; /* 56 */
+         * y = 207 - dx). Rotated full shows all 256 rows (dy = r); rotated
+         * fits them into 240: output row r shows dy = r*16/15, so every 16th
+         * row (dy = 15, 31, ...) is dropped. */
+        const int full = (orient == PHX_ORIENT_ROTATED_FULL);
+        int cw, ch, left, y0, w, h;
+        game_area(orient, stride, &cw, &ch, &left, &y0, &w, &h); /* left 56, or 24 at stride 256 */
         const int pb = v->palette_bank << 4;
-        for (int r = 0; r < CANVAS_H; r++)
+        for (int r = 0; r < h; r++)
         {
-            const int x = (r * 16) / 15;
+            const int x = full ? r : (r * 16) / 15;
             const int tx = x >> 3, px = x & 7;
             const int bx = (x + v->scroll) & 0xff;
             const int btx = bx >> 3, bpx = bx & 7;

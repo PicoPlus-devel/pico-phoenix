@@ -97,6 +97,10 @@ typedef enum
     PHX_ORIENT_ROTATED = 0,  /* Tate mode Off: turned upright for a normal monitor */
     PHX_ORIENT_TATE_CW = 1,  /* Bottom left: raw raster; monitor turned clockwise */
     PHX_ORIENT_TATE_CCW = 2, /* Bottom right: raw raster rotated 180; monitor turned counter-clockwise */
+    /* Not a setting: Tate mode Off on a display that scales the rows itself
+     * (HSTX). All 256 rows of the upright picture, on a canvas `stride` pixels
+     * wide and PHX_RAW_WIDTH (256) rows tall, centred at x = (stride - 208) / 2. */
+    PHX_ORIENT_ROTATED_FULL = 3,
 } phx_orient_t;
 
 typedef enum
@@ -123,7 +127,8 @@ void phx_gfx_init(phx_gfx_t *g, const phx_roms_t *roms, phx_pixfmt_t fmt);
 
 /* Draws the game area of the frame into a 320x240 canvas (stride in pixels).
  * Rotated mode shows the 208x256 picture as 208x240, centred, by dropping
- * every 16th row; tate shows the 256x208 raster centred.
+ * every 16th row; tate shows the 256x208 raster centred. Rotated full uses
+ * its own canvas, see PHX_ORIENT_ROTATED_FULL.
  *
  * The borders around the game area are not touched, so anything drawn there
  * (the FPS counter) survives from frame to frame instead of being erased and

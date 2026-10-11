@@ -6,6 +6,9 @@
  *
  * Options:
  *   --tate 0|1|2   Tate mode: 0 Off (default), 1 Bottom left, 2 Bottom right
+ *   --tall         Tate off as HSTX boards show it: all 256 rows of the
+ *                  picture, scaled to 480 lines by the driver's code
+ *                  (hstx_scale.h)
  *   --wav FILE     write the audio (mono, 16-bit, 44.1 kHz)
  *   --coin F       insert a coin at frame F (held for 4 frames)
  *   --start F      press 1P start at frame F (held for 4 frames)
@@ -13,7 +16,8 @@
  *                  shield now and then
  *
  * Every dumped frame is outdir/frame_NNNNN.ppm (320x240, the canvas the board
- * shows). A summary line per second reports the time spent per frame.
+ * shows; with --tall the 640x480 the HSTX driver sends). A summary line per
+ * second reports the time spent per frame.
  */
 #include <dirent.h>
 #include <stdio.h>
@@ -24,9 +28,11 @@
 
 #include "phoenix.h"
 #include "romload.h"
+#include "hstx_scale.h"
 
 #define SAMPLERATE 44100
 #define SAMPLES_PER_FRAME 735
+#define TALL_W 256 /* the tall canvas of main.cpp */
 
 /* --- stdio implementation of phx_io_t ----------------------------------- */
 
@@ -100,6 +106,39 @@ static void write_ppm(const char *path, const uint16_t *fb)
     fclose(f);
 }
 
+/* --tall: the TALL_W x PHX_RAW_WIDTH RGB555 canvas as the HSTX driver sends
+ * it, 640x480: the rows scaled to the lines, the pixels doubled between black
+ * borders. */
+static void write_ppm_tall(const char *path, const uint16_t *fb)
+{
+    FILE *f = fopen(path, "wb");
+    if (!f)
+        return;
+    fprintf(f, "P6\n640 480\n255\n");
+    const int pairs = TALL_W / 2, border = (640 - 2 * TALL_W) / 2;
+    for (uint32_t line = 0; line < 480; line++)
+    {
+        uint32_t q, a[TALL_W / 2], b[TALL_W / 2];
+        uint16_t px[TALL_W];
+        const uint32_t row = hstx_scale_row(line, PHX_RAW_WIDTH, 480, &q);
+        memcpy(a, fb + row * TALL_W, sizeof(a));
+        if (q)
+        {
+            memcpy(b, fb + (row + 1) * TALL_W, sizeof(b));
+            hstx_scale_blend(a, a, b, pairs, q);
+        }
+        memcpy(px, a, sizeof(px));
+        for (int x = 0; x < 640; x++)
+        {
+            const uint16_t p = (x < border || x >= 640 - border) ? 0 : px[(x - border) / 2];
+            uint8_t rgb[3] = {(uint8_t)(((p >> 10) & 0x1f) * 255 / 31), (uint8_t)(((p >> 5) & 0x1f) * 255 / 31),
+                              (uint8_t)((p & 0x1f) * 255 / 31)};
+            fwrite(rgb, 1, 3, f);
+        }
+    }
+    fclose(f);
+}
+
 static void put16(FILE *f, uint16_t v)
 {
     fputc(v & 0xff, f);
@@ -149,7 +188,7 @@ int main(int argc, char **argv)
     int frames = atoi(argv[2]);
     int every = atoi(argv[3]);
     const char *outdir = "hosttest/out";
-    int tate = 0, coin_at = -1, start_at = -1, play_at = -1;
+    int tate = 0, tall = 0, coin_at = -1, start_at = -1, play_at = -1;
     const char *wav_path = NULL;
     int a = 4;
     if (argc > 4 && argv[4][0] != '-')
@@ -158,6 +197,8 @@ int main(int argc, char **argv)
     {
         if (!strcmp(argv[a], "--tate") && a + 1 < argc)
             tate = atoi(argv[++a]);
+        else if (!strcmp(argv[a], "--tall"))
+            tall = 1;
         else if (!strcmp(argv[a], "--wav") && a + 1 < argc)
             wav_path = argv[++a];
         else if (!strcmp(argv[a], "--coin") && a + 1 < argc)
@@ -199,7 +240,8 @@ int main(int argc, char **argv)
     static phx_t m;
     static phx_gfx_t gfx;
     phx_init(&m, &roms, SAMPLERATE, SAMPLES_PER_FRAME);
-    phx_gfx_init(&gfx, &roms, PHX_FMT_RGB565);
+    /* --tall blends RGB555, as the HSTX driver does */
+    phx_gfx_init(&gfx, &roms, tall ? PHX_FMT_RGB555 : PHX_FMT_RGB565);
 
     FILE *wav = NULL;
     if (wav_path)
@@ -239,9 +281,11 @@ int main(int argc, char **argv)
         double t0 = now_s();
         phx_run_frame(&m, audio);
         double t1 = now_s();
+        const phx_orient_t orient = tall ? PHX_ORIENT_ROTATED_FULL : (phx_orient_t)tate;
+        const int stride = tall ? TALL_W : 320;
         if (f == 0)
-            phx_render_borders(&gfx, (phx_orient_t)tate, fb, 320);
-        phx_render(&gfx, &m.video, (phx_orient_t)tate, fb, 320);
+            phx_render_borders(&gfx, orient, fb, stride);
+        phx_render(&gfx, &m.video, orient, fb, stride);
         double t2 = now_s();
         t_emu += t1 - t0;
         t_render += t2 - t1;
@@ -262,7 +306,10 @@ int main(int argc, char **argv)
         {
             char path[1024];
             snprintf(path, sizeof(path), "%s/frame_%05d.ppm", outdir, f);
-            write_ppm(path, fb);
+            if (tall)
+                write_ppm_tall(path, fb);
+            else
+                write_ppm(path, fb);
         }
         if ((f + 1) % 60 == 0)
         {

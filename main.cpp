@@ -15,7 +15,10 @@
  *
  * Phoenix is a vertical game. The Tate mode setting chooses between the
  * picture turned upright for a normal monitor (default) and the unrotated
- * raster for a monitor turned on its side; see phoenix/phoenix.h.
+ * raster for a monitor turned on its side; see phoenix/phoenix.h. Upright,
+ * HSTX shows all 256 rows of the picture, scaled to the screen height by the
+ * video driver; PicoDVI leaves rows out to fit its 240 (see "Framebuffer
+ * access").
  */
 
 #include <cstdio>
@@ -134,9 +137,39 @@ const uint8_t g_available_screen_modes_phoenix[] = {
 
 // ---------------------------------------------------------------------------
 // Framebuffer access: the one place the two video back-ends differ.
-// Both are a contiguous 320x240 16-bit buffer, RGB555 on HSTX and RGB444 on
-// PicoDVI.
+// Both are a contiguous 16-bit buffer, RGB555 on HSTX and RGB444 on PicoDVI,
+// of 320x240 pixels. Except on HSTX with Tate off: there the canvas is as tall
+// as the picture, TALL_W x 256, and the driver scales its rows to the 480
+// lines of the display (hstx_setFrameSize), so no row is left out. The picture
+// sits in the middle, between columns that hold the FPS counter. It fits in
+// the same memory.
 // ---------------------------------------------------------------------------
+#if HSTX
+#define TALL_W 256
+static_assert(TALL_W * PHX_RAW_WIDTH <= SCREENWIDTH * SCREENHEIGHT, "the tall canvas must fit the framebuffer");
+#endif
+static int fbWidth = SCREENWIDTH; // the canvas, and its stride
+
+// Switches between the 320x240 canvas and the tall one. Returns true when it
+// changed, which leaves the screen black.
+static bool setTallCanvas(bool tall)
+{
+#if HSTX
+    const int w = tall ? TALL_W : SCREENWIDTH;
+    if (w == fbWidth)
+        return false;
+    // read with the other stride, the old picture would show as noise
+    memset(hstx_getframebuffer(), 0, SCREENWIDTH * SCREENHEIGHT * sizeof(uint16_t));
+    if (!(tall ? hstx_setFrameSize(TALL_W, PHX_RAW_WIDTH) : hstx_setFrameSize(SCREENWIDTH, SCREENHEIGHT)))
+        panic("hstx_setFrameSize failed\n");
+    fbWidth = w;
+    return true;
+#else
+    (void)tall;
+    return false;
+#endif
+}
+
 static inline uint16_t *fbLine(int line)
 {
 #if HSTX
@@ -161,6 +194,7 @@ static inline uint16_t rgb(uint8_t r, uint8_t g, uint8_t b)
 // ---------------------------------------------------------------------------
 static void screenClear(uint16_t bg)
 {
+    setTallCanvas(false);
     for (int y = 0; y < SCREENHEIGHT; y++)
     {
         uint16_t *dst = fbLine(y);
@@ -169,10 +203,11 @@ static void screenClear(uint16_t bg)
     }
 }
 
-// col/row in 8x8 cells of the 40x30 screen; col < 0 centres the text.
+// col/row in 8x8 cells of the canvas (40x30 on the 320x240 one); col < 0
+// centres the text.
 static void screenText(int col, int row, const char *s, uint16_t fg, uint16_t bg)
 {
-    const int cols = SCREENWIDTH / FONT_CHAR_WIDTH;
+    const int cols = fbWidth / FONT_CHAR_WIDTH;
     const int len = (int)strlen(s);
     if (col < 0)
         col = (len < cols) ? (cols - len) / 2 : 0;
@@ -415,25 +450,33 @@ static bool fpsShown = false;
 
 static void __noinline __not_in_flash_func(presentFrame)()
 {
-    const phx_orient_t orient = (phx_orient_t)settings.flags.tateMode;
+    phx_orient_t orient = (phx_orient_t)settings.flags.tateMode;
     const bool showFps = settings.flags.displayFrameRate;
+
+    // Tate off on HSTX: the tall canvas
+    if (setTallCanvas(HSTX && orient == PHX_ORIENT_ROTATED))
+        bordersValid = false;
+    if (fbWidth != SCREENWIDTH)
+        orient = PHX_ORIENT_ROTATED_FULL;
 
     if (!bordersValid || orient != bordersOrient || (fpsShown && !showFps))
     {
-        phx_render_borders(&gfx, orient, fbLine(0), SCREENWIDTH);
+        phx_render_borders(&gfx, orient, fbLine(0), fbWidth);
         bordersValid = true;
         bordersOrient = orient;
     }
     fpsShown = showFps;
 
-    phx_render(&gfx, &machine.video, orient, fbLine(0), SCREENWIDTH);
+    phx_render(&gfx, &machine.video, orient, fbLine(0), fbWidth);
 
     if (showFps)
     {
         char s[3] = {(char)('0' + (fps / 10) % 10), (char)('0' + fps % 10), 0};
-        // Cell (1, 1): in every orientation that is border, not game, and one
-        // cell in from the corner a TV that overscans cuts off.
-        screenText(1, 1, s, rgb(255, 255, 255), rgb(0, 0, 0));
+        // Cell (1, 1): in every orientation of the 320x240 canvas that is
+        // border, not game, and one cell in from the corner a TV that
+        // overscans cuts off. Cell (0, 1) on the tall canvas: its left column,
+        // 64 px in from the screen edge.
+        screenText(fbWidth != SCREENWIDTH ? 0 : 1, 1, s, rgb(255, 255, 255), rgb(0, 0, 0));
     }
 }
 
@@ -622,6 +665,7 @@ static void processPerFrame()
         showSettings = false;
         machine.inputs = 0;
         resetInputs();
+        setTallCanvas(false); // the settings menu draws on the 320x240 canvas
         int rval = showSettingsMenu(true);
 
         // menu.cpp saves only down the SAVE path; `settings` only ever holds

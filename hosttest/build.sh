@@ -28,6 +28,6 @@ CORE=(
   third_party/miniz/miniz.c
 )
 
-gcc "${CFLAGS[@]}" hosttest/phx_host.c "${CORE[@]}" -lm -o hosttest/phx_host
+gcc "${CFLAGS[@]}" -I pico_shared/drivers/pico_hdmi hosttest/phx_host.c "${CORE[@]}" -lm -o hosttest/phx_host
 gcc "${CFLAGS[@]}" hosttest/cpm_host.c phoenix/i8085.c -o hosttest/cpm_host
 echo "built hosttest/phx_host and hosttest/cpm_host"
