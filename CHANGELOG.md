@@ -8,6 +8,10 @@ pico-phoenix: the arcade game Phoenix (Amstar, 1980) for RP2350 boards with HDMI
 
 The game ROMs are not included. Copy MAME's `phoenix.zip` to `/roms/arcade/PHOENIX` on the SD card, as it is or unzipped. See the [README](https://github.com/PicoPlus-devel/pico-phoenix#game-data).
 
+# v0.2.2
+
+- The release now includes updateAll.exe, which installs the ROM set on the SD card from a Windows computer. The readme explains how to use it.
+
 # v0.2.1
 
 - **Every line of the picture is shown** on boards with HSTX video output, such as the Adafruit Fruit Jam, when *Tate mode* is off. Before, one line in sixteen was left out.
