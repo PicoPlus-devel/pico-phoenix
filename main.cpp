@@ -89,7 +89,7 @@ int8_t g_settings_visibility_phoenix[MOPT_COUNT] = {
     [MOPT_RESET_GAME] = 1,
     [MOPT_REBOOT_TO_LOADER] = BOOTLOADER_BUILD,    // return to the bootloader's picker
     [MOPT_SAVE_RESTORE_STATE] = -1,                // no save states
-    [MOPT_SCREENMODE] = 1,
+    [MOPT_SCREENMODE] = HSTX,                      // PicoDVI has only one: no scanlines
     [MOPT_SCANLINES] = 0,                          // covered by the screen modes
     [MOPT_SCANLINE_TYPE] = HSTX,
     [MOPT_FPS_OVERLAY] = 1,
@@ -121,18 +121,19 @@ int8_t g_settings_visibility_phoenix[MOPT_COUNT] = {
     [MOPT_MENU_OVERSCAN] = 0,                      // shown regardless: listed below the menu colors
     [MOPT_GENESIS_PAD] = 0,                        // Genesis
     [MOPT_NES_PALETTE] = 0,                        // NES
-    [MOPT_HSTX_CLOCK_FIX] = 0,                     // only matters at 378 MHz and up
     [MOPT_BUTTON_LAYOUT] = 0,                      // NES
     [MOPT_TATE_MODE] = 1,                          // Phoenix is a vertical game
 };
 
 // The 8:7 modes stretch NES pixels; Phoenix has square-ish pixels, so only the
 // 1:1 modes are offered.
+// PicoDVI has no scanlines: on the upright picture (Tate mode off) they do not
+// display well.
 const uint8_t g_available_screen_modes_phoenix[] = {
     0, // SCANLINE_8_7
     0, // NOSCANLINE_8_7
-    1, // SCANLINE_1_1
-    1, // NOSCANLINE_1_1
+    HSTX, // SCANLINE_1_1
+    1,    // NOSCANLINE_1_1
 };
 
 // ---------------------------------------------------------------------------
