@@ -8,6 +8,12 @@ pico-phoenix: the arcade game Phoenix (Amstar, 1980) for RP2350 boards with HDMI
 
 The game ROMs are not included. Copy MAME's `phoenix.zip` to `/roms/arcade/PHOENIX` on the SD card, as it is or unzipped. See the [README](https://github.com/PicoPlus-devel/pico-phoenix#game-data).
 
+# v0.2.4
+
+- **NES and SNES controllers on the controller ports are now read with the same timing as a real console**, on all boards. Thanks to @javavi.
+- Under pico-bootLoader, the settings menu entry that goes back to the bootloader is now called **Return to boot loader**.
+- Fixed: on boards with HSTX video, with *Display Mode* set to DVI, the picture could randomly drop out, and now and then a single line was shown shifted to the right for one frame.
+
 # v0.2.3
 
 - **No scanlines on boards with PicoDVI output.** With *Tate mode* off they did not display well, so the scanline screen mode is no longer offered on these boards. A saved scanline setting switches to the mode without scanlines.
