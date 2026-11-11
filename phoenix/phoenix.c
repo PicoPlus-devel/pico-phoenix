@@ -505,3 +505,40 @@ void PHX_HOT(phx_render)(const phx_gfx_t *g, const phx_video_t *v, phx_orient_t 
         }
     }
 }
+
+/* ---------------------------------------------------------------------------
+ * DIP switches: MAME's phoenix, DSW0. Not offered: the cabinet, as the flipped
+ * picture of a cocktail cabinet is not emulated, and the two unknown switches.
+ * Bit 7 is the vertical blank, not a switch.
+ * ------------------------------------------------------------------------ */
+
+#define DIP_ROW(label, text, port, mask, names, values) \
+    {label, text ". Saving restarts game", port, mask, sizeof(values), names, values}
+
+static const char *const coin_names[] = {"2 coins, 1 credit", "1 coin, 1 credit"};
+static const uint8_t coin_values[] = {0x10, 0x00};
+static const char *const lives_names[] = {"3", "4", "5", "6"};
+static const uint8_t lives_values[] = {0x00, 0x01, 0x02, 0x03};
+static const char *const bonus_names[] = {"3000 and 30000", "4000 and 40000", "5000 and 50000", "6000 and 60000"};
+static const uint8_t bonus_values[] = {0x00, 0x04, 0x08, 0x0c};
+
+const phx_dip_t phx_dips[] = {
+    DIP_ROW("Coinage", "Coins per credit", 0, 0x10, coin_names, coin_values),
+    DIP_ROW("Lives", "Lives at start", 0, 0x03, lives_names, lives_values),
+    DIP_ROW("Bonus life", "Extra life at", 0, 0x0c, bonus_names, bonus_values),
+};
+const int phx_ndips = sizeof(phx_dips) / sizeof(phx_dips[0]);
+
+int phx_dip_choice(const phx_dip_t *d, const uint8_t *ports)
+{
+    for (int c = 0; c < d->count; c++)
+        if ((ports[d->port] & d->mask) == d->values[c])
+            return c;
+    return -1;
+}
+
+void phx_dip_select(const phx_dip_t *d, uint8_t *ports, int choice)
+{
+    if (choice >= 0 && choice < d->count)
+        ports[d->port] = (uint8_t)((ports[d->port] & ~d->mask) | d->values[choice]);
+}

@@ -84,6 +84,33 @@ typedef struct phx
 void phx_init(phx_t *m, const phx_roms_t *roms, int samplerate, int samples_per_frame);
 void phx_reset(phx_t *m);
 
+/* --- DIP switches -------------------------------------------------------------
+ * The switches as rows of a menu, on one port: MAME's DSW0, so a row's values
+ * read as MAME's PORT_DIPSETTINGs. The game reads them from m->dsw, which
+ * phx_init sets to the defaults; phx_reset keeps them, and the game takes a
+ * change into account from its next start. */
+#define PHX_DIP_PORTS 1
+
+typedef struct
+{
+    const char *label;        /* "Lives" */
+    const char *help;         /* at most 40 characters */
+    uint8_t port;             /* index into the ports */
+    uint8_t mask;             /* its bits in that port */
+    uint8_t count;            /* its choices */
+    const char *const *names; /* what each choice is shown as */
+    const uint8_t *values;    /* the bits of each choice */
+} phx_dip_t;
+
+extern const phx_dip_t phx_dips[];
+extern const int phx_ndips;
+
+/* The choice these ports hold for a row, or -1 if they hold none of them. */
+int phx_dip_choice(const phx_dip_t *d, const uint8_t *ports);
+
+/* Puts a choice of a row into the ports. Other bits stay; -1 changes nothing. */
+void phx_dip_select(const phx_dip_t *d, uint8_t *ports, int choice);
+
 /* Runs one frame (45056 CPU cycles) and renders samples_per_frame samples into
  * audio. m->video holds the picture of this frame afterwards. */
 void phx_run_frame(phx_t *m, int16_t *audio);

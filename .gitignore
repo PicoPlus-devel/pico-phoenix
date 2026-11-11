@@ -30,6 +30,7 @@ mmi6301.ic4?
 # Host harness (hosttest/) binaries and outputs
 hosttest/phx_host
 hosttest/cpm_host
+hosttest/dip_test
 hosttest/out*/
 hosttest/**/*.ppm
 hosttest/**/*.png

@@ -10,6 +10,7 @@ The game ROMs are not included. Copy MAME's `phoenix.zip` to `/roms/arcade/PHOEN
 
 # v0.2.4
 
+- **The DIP switches can now be changed in the settings menu**: coins per credit, lives and the bonus life. Saving a change restarts the game. The choices are kept on the SD card. The readme lists them.
 - **NES and SNES controllers on the controller ports are now read with the same timing as a real console**, on all boards. Thanks to @javavi.
 - Under pico-bootLoader, the settings menu entry that goes back to the bootloader is now called **Return to boot loader**.
 - Fixed: on boards with HSTX video, with *Display Mode* set to DVI, the picture could randomly drop out, and now and then a single line was shown shifted to the right for one frame.

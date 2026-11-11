@@ -29,5 +29,6 @@ CORE=(
 )
 
 gcc "${CFLAGS[@]}" -I pico_shared/drivers/pico_hdmi hosttest/phx_host.c "${CORE[@]}" -lm -o hosttest/phx_host
+gcc "${CFLAGS[@]}" -I . -I hosttest/fatfs_sim hosttest/dip_test.c dipfile.c "${CORE[@]}" -lm -o hosttest/dip_test
 gcc "${CFLAGS[@]}" hosttest/cpm_host.c phoenix/i8085.c -o hosttest/cpm_host
-echo "built hosttest/phx_host and hosttest/cpm_host"
+echo "built hosttest/phx_host, hosttest/cpm_host and hosttest/dip_test"
