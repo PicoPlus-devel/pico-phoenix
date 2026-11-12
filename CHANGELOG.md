@@ -8,9 +8,11 @@ pico-phoenix: the arcade game Phoenix (Amstar, 1980) for RP2350 boards with HDMI
 
 The game ROMs are not included. Copy MAME's `phoenix.zip` to `/roms/arcade/PHOENIX` on the SD card, as it is or unzipped. See the [README](https://github.com/PicoPlus-devel/pico-phoenix#game-data).
 
-# v0.2.4
+# v0.3
 
 - **The DIP switches can now be changed in the settings menu**: coins per credit, lives and the bonus life. Saving a change restarts the game. The choices are kept on the SD card. The readme lists them.
+- **Pico Computer 3.** The game now runs on the [Pico Computer 3](https://github.com/UKTailwind/Pico-Computer-3): HDMI, sound through HDMI or the audio jack, USB controllers, and NES or SNES controllers and a Wii Classic controller on the I/O header. The pin assignment may still change. See [Pico Computer 3](https://github.com/PicoPlus-devel/pico-infonesPlus#pico-computer-3) in the pico-infonesPlus readme. Thanks to @javavi.
+- **PCB for the Waveshare RP2350-PiZero.** The game now runs on a PCB for the Waveshare RP2350-PiZero, designed by @szuping: HDMI, sound through HDMI or the audio jack, a USB controller on the PIO-USB port, NES and SNES controller ports, and a socket for an ESP32 module that connects Bluetooth controllers through [BlueRetro](https://github.com/darthcloud/blueretro). The PCB design is not yet available. See [PCB with Waveshare RP2350-PiZero](https://github.com/PicoPlus-devel/pico-infonesPlus#pcb-with-waveshare-rp2350-pizero) in the pico-infonesPlus readme.
 - **NES and SNES controllers on the controller ports are now read with the same timing as a real console**, on all boards. Thanks to @javavi.
 - Under pico-bootLoader, the settings menu entry that goes back to the bootloader is now called **Return to boot loader**.
 - Fixed: on boards with HSTX video, with *Display Mode* set to DVI, the picture could randomly drop out, and now and then a single line was shown shifted to the right for one frame.
@@ -58,6 +60,7 @@ Wiring and assembly are the same as for the NES emulator; the Readme links go to
 | Adafruit Fruit Jam | [picoPhoenix_AdafruitFruitJam_arm_piousb.uf2](https://github.com/PicoPlus-devel/pico-phoenix/releases/latest/download/picoPhoenix_AdafruitFruitJam_arm_piousb.uf2) | [Readme](https://github.com/PicoPlus-devel/pico-infonesPlus#adafruit-fruit-jam) |
 | Waveshare RP2350-PiZero | [picoPhoenix_WaveShareRP2350PiZero_arm_piousb.uf2](https://github.com/PicoPlus-devel/pico-phoenix/releases/latest/download/picoPhoenix_WaveShareRP2350PiZero_arm_piousb.uf2) | [Readme](https://github.com/PicoPlus-devel/pico-infonesPlus#waveshare-rp2040rp2350-pizero-development-board) |
 | Olimex RP2040-PICO-PC with a Pico 2 | [picoPhoenix_OlimexPicoPC_arm.uf2](https://github.com/PicoPlus-devel/pico-phoenix/releases/latest/download/picoPhoenix_OlimexPicoPC_arm.uf2) | [Readme](https://github.com/PicoPlus-devel/pico-infonesPlus#olimex-rp2040-pico-pc) |
+| Pico Computer 3 (PC3) | [picoPhoenix_PicoComputer3_arm.uf2](https://github.com/PicoPlus-devel/pico-phoenix/releases/latest/download/picoPhoenix_PicoComputer3_arm.uf2) | [Readme](https://github.com/PicoPlus-devel/pico-infonesPlus#pico-computer-3) |
 
 ### Breadboard
 
@@ -91,6 +94,16 @@ PCB: [Gerber_PicoNES_Mini_PCB_v2.0.zip](https://github.com/PicoPlus-devel/pico-i
 PCB: [Gerber_PicoNES_Micro_v1.2.zip](https://github.com/PicoPlus-devel/pico-infonesPlus/releases/latest/download/Gerber_PicoNES_Micro_v1.2.zip)
 
 [Readme](https://github.com/PicoPlus-devel/pico-infonesPlus#pcb-with-waveshare-rp2350-usb-a)
+
+### PCB Waveshare RP2350-PiZero
+
+| Board | Binary | Readme |
+|:--|:--|:--|
+| Waveshare RP2350-PiZero (*) | [picoPhoenix_WaveShareRP2350PiZeroLiuPCB_arm_piousb.uf2](https://github.com/PicoPlus-devel/pico-phoenix/releases/latest/download/picoPhoenix_WaveShareRP2350PiZeroLiuPCB_arm_piousb.uf2) | [Readme](https://github.com/PicoPlus-devel/pico-infonesPlus#pcb-with-waveshare-rp2350-pizero) |
+
+This binary is only for the RP2350-PiZero on this PCB. The PCB design is not yet available.
+
+(*) If you fitted this board with PSRAM and it has a non-Winbond flash chip, apply the [flash_config fix](https://github.com/PicoPlus-devel/pico-infonesPlus#psram-with-a-non-winbond-flash-chip) before flashing the emulator.
 
 ### Pimoroni Pico DV
 
