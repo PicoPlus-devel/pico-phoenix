@@ -43,6 +43,7 @@
 
 #include "phoenix.h"
 #include "romload.h"
+#include "dipfile.h"
 
 // The emulated machine is light: an 8085 at 2.75 MHz, two tilemaps and a few
 // sound circuits. The standard 252 MHz clock (10x the 640x480 pixel clock)
@@ -619,6 +620,73 @@ static uint8_t mapInputs(uint32_t buttons, uint32_t pad2)
 }
 
 // ---------------------------------------------------------------------------
+// The DIP switches: rows of the settings menu (menuSetEmulatorOptions in menu.h,
+// the table in the core), kept in DIPS_PATH. Saving a change restarts the game,
+// which then sees the switches from its start. The menu stops the game while it
+// is open, so the rows edit the switches the game reads.
+// ---------------------------------------------------------------------------
+#define DIPS_DIR GAMESAVEDIR "/PHOENIX"
+#define DIPS_PATH DIPS_DIR "/PHOENIX.DIP"
+
+static int ndips = 0;
+static bool dipsChanged = false;
+static MenuEmulatorOption dipOptions[MENU_MAX_EMULATOR_OPTIONS];
+
+static void saveDips()
+{
+    f_mkdir(GAMESAVEDIR);
+    f_mkdir(DIPS_DIR);
+    FIL *fil = (FIL *)Frens::f_malloc(sizeof(FIL));
+    const bool ok = fil && dipFileSave(fil, DIPS_PATH, phx_dips, ndips, &machine.dsw);
+    Frens::f_free(fil);
+    printf("DIP switches %s %s\n", ok ? "saved to" : "NOT saved to", DIPS_PATH);
+}
+
+template <int K>
+static int dipGet()
+{
+    return phx_dip_choice(&phx_dips[K], &machine.dsw);
+}
+
+// Called for every row on SAVE, in order. The file is written at the last row,
+// not when the menu returns: a setting that restarts the board does so from
+// within the menu, after these calls.
+template <int K>
+static void dipSet(int choice)
+{
+    uint8_t *ports = &machine.dsw;
+    const uint8_t was = ports[phx_dips[K].port];
+    phx_dip_select(&phx_dips[K], ports, choice);
+    if (ports[phx_dips[K].port] != was)
+        dipsChanged = true;
+    if (K == ndips - 1 && dipsChanged)
+        saveDips();
+}
+
+static int (*const dipGets[MENU_MAX_EMULATOR_OPTIONS])(void) = {
+    dipGet<0>, dipGet<1>, dipGet<2>, dipGet<3>, dipGet<4>, dipGet<5>, dipGet<6>, dipGet<7>,
+};
+static void (*const dipSets[MENU_MAX_EMULATOR_OPTIONS])(int) = {
+    dipSet<0>, dipSet<1>, dipSet<2>, dipSet<3>, dipSet<4>, dipSet<5>, dipSet<6>, dipSet<7>,
+};
+
+// After phx_init: the switches hold the game's defaults, for DEFAULT to select,
+// until the choices kept on the card are read.
+static void startDips()
+{
+    ndips = phx_ndips < MENU_MAX_EMULATOR_OPTIONS ? phx_ndips : MENU_MAX_EMULATOR_OPTIONS;
+    uint8_t *ports = &machine.dsw;
+    for (int k = 0; k < ndips; k++)
+        dipOptions[k] = {phx_dips[k].label, phx_dips[k].help, phx_dips[k].count, phx_dips[k].names,
+                         phx_dip_choice(&phx_dips[k], ports), dipGets[k], dipSets[k]};
+    FIL *fil = (FIL *)Frens::f_malloc(sizeof(FIL));
+    if (fil && dipFileLoad(fil, DIPS_PATH, phx_dips, ndips, ports))
+        printf("DIP switches read from %s\n", DIPS_PATH);
+    Frens::f_free(fil);
+    menuSetEmulatorOptions(dipOptions, ndips);
+}
+
+// ---------------------------------------------------------------------------
 // Once per frame
 // ---------------------------------------------------------------------------
 static void processPerFrame()
@@ -684,7 +752,9 @@ static void processPerFrame()
             while (true)
                 tight_loop_contents();
         }
-        if (rval == 5) // Reset Game
+        const bool newDips = dipsChanged;
+        dipsChanged = false;
+        if (rval == 5 || newDips) // Reset Game, or the DIP switches changed
             phx_reset(&machine);
         bordersValid = false; // the menu drew over the whole screen
         Frens::PaceFrames60fps(true);
@@ -755,6 +825,7 @@ int main()
     {
         phx_gfx_init(&gfx, &roms, HSTX ? PHX_FMT_RGB555 : PHX_FMT_RGB444);
         phx_init(&machine, &roms, SAMPLERATE, SAMPLES_PER_FRAME);
+        startDips();
     }
     else
     {

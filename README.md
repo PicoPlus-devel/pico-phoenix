@@ -90,10 +90,12 @@ Development and testing take place on the Adafruit Fruit Jam (HW_CONFIG 8). The 
 | 13 | Murmulator M2 | HSTX | `picoPhoenix_MurmulatorM2_arm.uf2` |
 | 14 | Adafruit Feather RP2350 with HSTX Port and TLV320DAC3100 I2S DAC | HSTX | `picoPhoenix_AdafruitFeatherRP2350_TLV320DAC3100_arm_piousb.uf2` |
 | 15 | Olimex RP2040-PICO-PC with a Raspberry Pi Pico 2 | HSTX | `picoPhoenix_OlimexPicoPC_arm.uf2` |
+| 17 | Pico Computer 3 | HSTX | `picoPhoenix_PicoComputer3_arm.uf2` |
+| 18 | PCB for the Waveshare RP2350-PiZero | HSTX | `picoPhoenix_WaveShareRP2350PiZeroLiuPCB_arm_piousb.uf2` |
 
 For wiring and assembly instructions, see the setup sections of the [pico-infonesPlus README](https://github.com/PicoPlus-devel/pico-infonesPlus#setup). To flash a board, hold BOOTSEL while connecting it over USB, then copy the `.uf2` file onto the USB drive that appears.
 
-Audio is sent over HDMI. Boards with an I2S DAC (configurations 1, 8, 12, 13 and 14) can use it instead through the *External Audio* setting; on the Fruit Jam, plugging in headphones selects it automatically. Configuration 15 also plays the sound on its PWM audio jack.
+Audio is sent over HDMI. Boards with an I2S DAC (configurations 1, 8, 12, 13, 14, 17 and 18) can use it instead through the *External Audio* setting; on the Fruit Jam, plugging in headphones selects it automatically. Configuration 15 also plays the sound on its PWM audio jack.
 
 ***
 
@@ -115,7 +117,7 @@ Phoenix has a two-way joystick and two buttons. Two players take turns on the sa
 
 USB game controllers, NES and SNES controllers on the GPIO ports and the Wii Classic controller are supported, as in the other emulators of this family. The coin is inserted when SELECT is released, and only when no other button was pressed while it was held, so opening the settings menu does not insert a coin. While START is held, A switches the frame rate display (top left, in the border) on or off instead of firing; the same setting is also in the settings menu.
 
-The game is set to its factory defaults: 3 lives, a bonus ship at 3,000 and 30,000 points, and 1 coin for 1 credit.
+The game starts with its factory defaults: 3 lives, a bonus ship at 3,000 and 30,000 points, and 1 coin for 1 credit. These can be changed in the settings menu; see [DIP switches](#dip-switches).
 
 ***
 
@@ -148,9 +150,27 @@ Both pictures appear upright once the monitor is turned as described in the tabl
 
 ## Settings menu
 
-**SELECT + START** opens the settings menu during the game. Besides *Tate mode*, it offers the screen mode with or without scanlines (on boards with HSTX output; PicoDVI boards have no scanlines), the FPS overlay, audio on/off, rapid fire on A, the external audio output, the Fruit Jam volume and VU meter, *Reset Game*, the controller test, BOOTSEL mode and USB drive mode. When started from pico-bootLoader, it also offers *Return to emulator selection menu*.
+**SELECT + START** opens the settings menu during the game. Besides *Tate mode*, it offers the screen mode with or without scanlines (on boards with HSTX output; PicoDVI boards have no scanlines), the FPS overlay, audio on/off, rapid fire on A, the external audio output, the Fruit Jam volume and VU meter, *Reset Game*, the game's [DIP switches](#dip-switches), the controller test, BOOTSEL mode and USB drive mode. When started from pico-bootLoader, it also offers *Return to boot loader*.
 
 The settings are stored on the SD card in `/settings_ARC.dat`, a file shared by all arcade games of this family. The game has no save states, and high scores are not kept after a reset or power cycle.
+
+### DIP switches
+
+The settings menu also lists the DIP switches of the game:
+
+| Setting | Choices |
+| --- | --- |
+| Coinage (coins for credits) | 2 for 1, **1 for 1** |
+| Lives | **3**, 4, 5, 6 |
+| Bonus life | **3000 and 30000**, 4000 and 40000, 5000 and 50000, 6000 and 60000 |
+
+- **SAVE** with a changed switch restarts the game, as the game reads its switches when it starts. The game in progress is lost. **SAVE** without a changed switch does not restart the game.
+- **CANCEL** leaves the switches as they were.
+- **DEFAULT** selects the values shown in bold, which take effect when saved. These are the settings the game has when nothing was changed.
+
+The following switches are not offered: the cabinet, because the flipped picture of a cocktail cabinet is not emulated, and two switches whose purpose is not known.
+
+The choices are kept on the SD card in `/SAVES/PHOENIX/PHOENIX.DIP`, a short text file with a line per bank of switches, such as `dsw0=61`. Without the file, or when it cannot be read, the game uses its defaults, so deleting the file restores them. Anything in the file that is not a choice of a menu row is ignored.
 
 ***
 
@@ -177,9 +197,12 @@ The emulated board in `phoenix/` is plain C without Pico dependencies, and also 
 hosttest/build.sh
 ./hosttest/phx_host ~/roms/arcade/PHOENIX 3600 300 hosttest/out --coin 200 --start 260 --play 330 --wav hosttest/out/game.wav
 python3 hosttest/ppm2png.py hosttest/out/frame_00600.ppm
+./hosttest/dip_test
 ```
 
 `phx_host` loads the ROM set through the same loader as the firmware, runs the given number of frames with scripted input, writes every Nth frame as a 320 x 240 PPM in the chosen orientation (`--tate 0|1|2`) and the sound as a WAV file. `--tall` writes instead the 640 x 480 picture that a board with HSTX video output shows with *Tate mode* off. `cpm_host` runs the CP/M CPU test programs (for example `8080EXM.COM`) on the 8085 core.
+
+`dip_test` checks the file of the [DIP switches](#dip-switches) against a simulated FatFs, and the table of the game; it needs no ROM set. `phx_host --dip-list` prints the rows of the DIP switches, and `--dip ROW=CHOICE` sets one from the start of a run, with the numbers that `--dip-list` shows. `--keys F:MASK` holds inputs from frame F for 4 frames, for example several coins.
 
 ***
 
