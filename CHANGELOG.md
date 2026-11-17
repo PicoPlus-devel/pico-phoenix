@@ -8,6 +8,10 @@ pico-phoenix: the arcade game Phoenix (Amstar, 1980) for RP2350 boards with HDMI
 
 The game ROMs are not included. Copy MAME's `phoenix.zip` to `/roms/arcade/PHOENIX` on the SD card, as it is or unzipped. See the [README](https://github.com/PicoPlus-devel/pico-phoenix#game-data).
 
+# Next release
+
+- Built with Pico SDK 2.3.1. This leaves a little more memory free, about 4.4 KB.
+
 # v0.3
 
 - **The DIP switches can now be changed in the settings menu**: coins per credit, lives and the bonus life. Saving a change restarts the game. The choices are kept on the SD card. The readme lists them.
