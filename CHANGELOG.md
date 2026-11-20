@@ -8,7 +8,9 @@ pico-phoenix: the arcade game Phoenix (Amstar, 1980) for RP2350 boards with HDMI
 
 The game ROMs are not included. Copy MAME's `phoenix.zip` to `/roms/arcade/PHOENIX` on the SD card, as it is or unzipped. See the [README](https://github.com/PicoPlus-devel/pico-phoenix#game-data).
 
-# Next release
+# v0.3_bl
+
+This version is built for [pico-bootLoader](https://github.com/PicoPlus-devel/pico-bootLoader) only, and is included in its SD-card archive. It has no release of its own: without pico-bootLoader, keep using v0.3.
 
 - **Attract mode.** pico-bootLoader's new attract mode can now start the game when its ROMs are on the card; it then plays its own demo. Press any button to play yourself.
 - Built with Pico SDK 2.3.1. This leaves a little more memory free, about 4.4 KB.
